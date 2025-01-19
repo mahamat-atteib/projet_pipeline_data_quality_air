@@ -1,5 +1,6 @@
 import requests
 import pandas as pd
+from flask import Flask, jsonify
 from google.cloud import bigquery
 import datetime
 
@@ -13,6 +14,9 @@ AFRICAN_CAPITALS = [
     {"city": "Luanda", "country": "AO"},
     # Ajoutez les autres capitales ici...
 ]
+
+# Flask app
+app = Flask(__name__)
 
 # Fonction pour récupérer les données de l'API OpenAQ
 def fetch_air_quality_data(city, country, parameters, date_from, limit=100):
@@ -78,23 +82,34 @@ def load_to_bigquery(df, project_id, dataset_id, table_id):
     job.result()  # Attendre la fin du job
     print(f"Données mises à jour dans la table : {table_ref}")
 
-# Pipeline principal
+# Point d'entrée pour Cloud Run
+@app.route("/", methods=["POST"])
+def run_pipeline():
+    try:
+        # Étape 1 : Déterminer l'heure de la dernière exécution (1 minute avant)
+        last_execution_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # Étape 2 : Collecter les nouvelles données
+        raw_data = collect_african_air_quality(last_execution_time)
+
+        # Étape 3 : Transformer les données
+        if raw_data:
+            new_data = transform_air_quality_data(raw_data)
+            print(f"{len(new_data)} nouvelles entrées collectées.")
+
+            # Étape 4 : Écraser et charger les nouvelles données dans BigQuery
+            PROJECT_ID = "lustrous-braid-415120"
+            DATASET_ID = "qualite_air"
+            TABLE_ID = "mesures_africaines"
+            load_to_bigquery(new_data, PROJECT_ID, DATASET_ID, TABLE_ID)
+        else:
+            print("Aucune nouvelle donnée à ajouter.")
+        return jsonify({"status": "success", "message": "Pipeline exécuté avec succès"})
+    except Exception as e:
+        print(f"Erreur : {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 if __name__ == "__main__":
-    # Étape 1 : Déterminer l'heure de la dernière exécution (1 minute avant)
-    last_execution_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # Étape 2 : Collecter les nouvelles données
-    raw_data = collect_african_air_quality(last_execution_time)
-
-    # Étape 3 : Transformer les données
-    if raw_data:
-        new_data = transform_air_quality_data(raw_data)
-        print(f"{len(new_data)} nouvelles entrées collectées.")
-
-        # Étape 4 : Écraser et charger les nouvelles données dans BigQuery
-        PROJECT_ID = " lustrous-braid-415120"
-        DATASET_ID = "qualite_air"
-        TABLE_ID = "mesures_africaines"
-        load_to_bigquery(new_data, PROJECT_ID, DATASET_ID, TABLE_ID)
-    else:
-        print("Aucune nouvelle donnée à ajouter.")
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
