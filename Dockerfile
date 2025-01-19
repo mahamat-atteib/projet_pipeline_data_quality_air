@@ -5,7 +5,8 @@ FROM python:3.9-slim
 RUN pip install pandas google-cloud-storage requests
 
 # Copier le script dans l'image Docker
-COPY air_quality_pipeline.py /app/air_quality_pipeline.py
+#COPY air_quality_pipeline.py /app/air_quality_pipeline.py
+COPY . /app
 
 # Définir le répertoire de travail
 WORKDIR /app
