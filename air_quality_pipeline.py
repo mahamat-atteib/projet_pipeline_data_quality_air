@@ -86,8 +86,8 @@ def load_to_bigquery(df, project_id, dataset_id, table_id):
 @app.route("/", methods=["POST"])
 def run_pipeline():
     try:
-        # Étape 1 : Déterminer l'heure de la dernière exécution (1 minute avant)
-        last_execution_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # Étape 1 : Déterminer l'heure de la dernière exécution (5 minute avant)
+        last_execution_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Étape 2 : Collecter les nouvelles données
         raw_data = collect_african_air_quality(last_execution_time)
