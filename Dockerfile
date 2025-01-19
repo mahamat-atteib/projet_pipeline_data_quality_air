@@ -10,5 +10,8 @@ COPY air_quality_pipeline.py /app/air_quality_pipeline.py
 # Définir le répertoire de travail
 WORKDIR /app
 
+# Exposer le port attendu par Cloud Run
+EXPOSE 8080
+
 # Commande par défaut pour exécuter le script
 CMD ["python", "air_quality_pipeline.py"]
