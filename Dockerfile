@@ -8,8 +8,8 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copier le script dans l'image Docker
-#COPY air_quality_pipeline.py /app/air_quality_pipeline.py
-COPY . /app
+COPY air_quality_pipeline.py /app/
+#COPY . /app
 
 # Définir le répertoire de travail
 WORKDIR /app
