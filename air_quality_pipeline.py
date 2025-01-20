@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from google.cloud import bigquery
 import datetime
 
@@ -83,31 +83,35 @@ def load_to_bigquery(df, project_id, dataset_id, table_id):
     print(f"Données mises à jour dans la table : {table_ref}")
 
 # Point d'entrée pour Cloud Run
-@app.route("/", methods=["POST"])
-def run_pipeline():
-    try:
-        # Étape 1 : Déterminer l'heure de la dernière exécution (5 minute avant)
-        last_execution_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+@app.route("/", methods=["GET", "POST"])
+def home():
+    if request.method == "GET":
+        # Répondre avec un message simple pour les requêtes GET
+        return jsonify({"status": "success", "message": "Le service est actif et opérationnel !"})
+    elif request.method == "POST":
+        try:
+            # Étape 1 : Déterminer l'heure de la dernière exécution (5 minutes avant)
+            last_execution_time = (datetime.datetime.utcnow() - datetime.timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # Étape 2 : Collecter les nouvelles données
-        raw_data = collect_african_air_quality(last_execution_time)
+            # Étape 2 : Collecter les nouvelles données
+            raw_data = collect_african_air_quality(last_execution_time)
 
-        # Étape 3 : Transformer les données
-        if raw_data:
-            new_data = transform_air_quality_data(raw_data)
-            print(f"{len(new_data)} nouvelles entrées collectées.")
+            # Étape 3 : Transformer les données
+            if raw_data:
+                new_data = transform_air_quality_data(raw_data)
+                print(f"{len(new_data)} nouvelles entrées collectées.")
 
-            # Étape 4 : Écraser et charger les nouvelles données dans BigQuery
-            PROJECT_ID = "lustrous-braid-415120"
-            DATASET_ID = "qualite_air"
-            TABLE_ID = "mesures_africaines"
-            load_to_bigquery(new_data, PROJECT_ID, DATASET_ID, TABLE_ID)
-        else:
-            print("Aucune nouvelle donnée à ajouter.")
-        return jsonify({"status": "success", "message": "Pipeline exécuté avec succès"})
-    except Exception as e:
-        print(f"Erreur : {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+                # Étape 4 : Écraser et charger les nouvelles données dans BigQuery
+                PROJECT_ID = "lustrous-braid-415120"
+                DATASET_ID = "qualite_air"
+                TABLE_ID = "mesures_africaines"
+                load_to_bigquery(new_data, PROJECT_ID, DATASET_ID, TABLE_ID)
+            else:
+                print("Aucune nouvelle donnée à ajouter.")
+            return jsonify({"status": "success", "message": "Pipeline exécuté avec succès"})
+        except Exception as e:
+            print(f"Erreur : {str(e)}")
+            return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     import os
